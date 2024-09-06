@@ -74,27 +74,38 @@ th {
     background-color: #f2f2f2;
 }
 
-#fileList {
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
-
-#fileList ul {
+.file-list {
     list-style-type: none;
-    padding-left: 0;
+    padding: 0;
 }
 
-#fileList li {
-    background-color: #f0f0f0;
+.file-list li {
     margin-bottom: 5px;
-    padding: 5px;
-    border-radius: 3px;
-}
-#filterControls select {
-    padding: 5px;
-    margin-right: 10px;
+    display: flex;
+    align-items: center;
 }
 
-#downloadPDF {
-    margin-top: 20px;
+.file-name {
+    flex-grow: 1;
+    margin-right: 5px;
+}
+
+.removeFile {
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    line-height: 1;
+    padding: 0;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.removeFile:hover {
+    background-color: #ff1a1a;
 }
