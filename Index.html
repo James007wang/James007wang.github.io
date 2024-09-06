@@ -1,40 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schedule Extractor</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Schedule Extractor</h1>
-        
-        <div id="mockDataSection">
-            <h2>Generate Mock Data</h2>
-            <input type="date" id="mockDataDate">
-            <button id="generateMockData">Generate Mock Data</button>
-            <button id="generatePDF" disabled>Generate PDF from Mock Data</button>
-        </div>
+.file-list {
+    list-style-type: none;
+    padding: 0;
+}
 
-        <div id="extractDataSection">
-            <h2>Extract Data from PDF</h2>
-            <form id="uploadForm">
-                <input type="file" id="pdfFile" accept=".pdf" multiple>
-                <button type="submit" id="extractData">Extract Data</button>
-            </form>
-        </div>
+.file-list li {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
 
-        <div id="fileList"></div>
+.file-name {
+    flex-grow: 1;
+    margin-right: 5px;
+}
 
-        <div id="result"></div>
+.removeFile {
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    line-height: 1;
+    padding: 0;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-        <button id="downloadPDF" disabled>Download Filtered Data as PDF</button>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    <script src="script.js"></script>
-</body>
-</html>
+.removeFile:hover {
+    background-color: #ff1a1a;
+}
