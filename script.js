@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         mockData = generateMockData(selectedDate);
+        console.log('Mock data:', mockData);
         displayData(mockData, 'Mock Data Generated:');
         generatePDFBtn.disabled = false;
     });
@@ -50,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const doctorName = document.getElementById('doctorName').value;
 
         if (selectedFiles.length === 0) {
             alert('Please select at least one PDF file');
@@ -59,16 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             resultDiv.innerHTML = '<p>Extracting data, please wait...</p>';
-            extractedData = await extractScheduleFromMultipleFiles(selectedFiles, doctorName);
-            console.log('Extracted data:', extractedData);  // Add this line
+            extractedData = await extractScheduleFromMultipleFiles(selectedFiles);
+            console.log('Extracted data:', extractedData);
             if (extractedData.length > 0) {
                 displayData(extractedData, 'Extracted Data:');
                 downloadPDFBtn.disabled = false;
             } else {
                 resultDiv.innerHTML = `
-                    <p>No schedule found for ${doctorName}. Please check the following:</p>
+                    <p>No schedule found in the selected PDFs. Please check the following:</p>
                     <ul>
-                        <li>The doctor's name is spelled correctly and matches exactly with the name in the PDF.</li>
                         <li>The PDF content is in the expected format.</li>
                         <li>The PDF is not password-protected or encrypted.</li>
                     </ul>
@@ -82,8 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     downloadPDFBtn.addEventListener('click', () => {
-        const doctorName = document.getElementById('doctorName').value;
-        const filteredData = getFilteredData();
+        if (!extractedData || !Array.isArray(extractedData) || extractedData.length === 0) {
+            console.error('No valid data to filter:', extractedData);
+            alert('No data available to download. Please extract or generate data first.');
+            return;
+        }
+        const filteredData = getFilteredData(extractedData);
         console.log('Filtered data for PDF:', filteredData);
         if (filteredData.length === 0) {
             alert('No data to download after applying filters.');
@@ -91,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const pdfDoc = generatePDF(filteredData);
         const now = new Date();
-        const fileName = `${doctorName}-${now.toISOString().replace(/[:T]/g, '-').slice(0, -5)}.pdf`;
+        const fileName = `schedule-${now.toISOString().replace(/[:T]/g, '-').slice(0, -5)}.pdf`;
         console.log('Download file name:', fileName);
         pdfDoc.save(fileName);
     });
@@ -110,6 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayData(data, title) {
+        console.log('Displaying data:', data); // Debug log
+
         let html = `<h3>${title}</h3>`;
         html += '<div id="filterControls">';
         html += '<label for="startDate">Start Date: </label><input type="date" id="startDate">';
@@ -120,6 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
         html += '<option value="Pending">Pending</option>';
         html += '<option value="Cancelled">Cancelled</option>';
         html += '</select>';
+        html += '<label for="doctorFilter">Doctor: </label><select id="doctorFilter">';
+        html += '<option value="">All</option>';
+        // Add doctor options dynamically
+        [...new Set(data.map(item => item.Doctor))].forEach(doctor => {
+            html += `<option value="${doctor}">${doctor}</option>`;
+        });
+        html += '</select>';
         html += '<button id="applyFilter">Apply Filter</button>';
         html += '</div>';
         html += '<div id="dataTable"></div>';
@@ -129,31 +141,33 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('startDate').value = '';
         document.getElementById('endDate').value = '';
         document.getElementById('statusFilter').value = '';
+        document.getElementById('doctorFilter').value = '';
 
         const applyFilterBtn = document.getElementById('applyFilter');
         applyFilterBtn.addEventListener('click', () => {
             updateDataTable(data);
         });
 
-        updateDataTable(data);
+        updateDataTable(data, false); // Pass false to indicate it's the initial display
     }
 
-    function updateDataTable(data) {
-        const filteredData = getFilteredData(data);
+    function updateDataTable(data, applyFilter = true) {
+        const filteredData = applyFilter ? getFilteredData(data) : data;
+        console.log('Filtered data:', filteredData); // Debug log
         const dataTableDiv = document.getElementById('dataTable');
         let totalPay = calculateTotalPay(filteredData);
 
         let tableHtml = '<table><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Patient</th><th>Service</th><th>Duration</th><th>Pay</th><th>Status</th></tr>';
         filteredData.forEach(appointment => {
             tableHtml += `<tr>
-                <td>${appointment.date}</td>
-                <td>${appointment.time}</td>
-                <td>${appointment.doctor}</td>
-                <td>${appointment.patient}</td>
-                <td>${appointment.service}</td>
-                <td>${appointment.duration}</td>
-                <td>${appointment.pay}</td>
-                <td>${appointment.status}</td>
+                <td>${appointment.Date}</td>
+                <td>${appointment.Time}</td>
+                <td>${appointment.Doctor}</td>
+                <td>${appointment.Patient}</td>
+                <td>${appointment.Service}</td>
+                <td>${appointment.Duration}</td>
+                <td>${appointment.Pay}</td>
+                <td>${appointment.Status}</td>
             </tr>`;
         });
         tableHtml += '</table>';
@@ -161,53 +175,44 @@ document.addEventListener('DOMContentLoaded', () => {
         dataTableDiv.innerHTML = tableHtml;
     }
 
-    function getFilteredData() {
+    function getFilteredData(data) {
         const startDateInput = document.getElementById('startDate');
         const endDateInput = document.getElementById('endDate');
         const statusFilterSelect = document.getElementById('statusFilter');
+        const doctorFilterSelect = document.getElementById('doctorFilter');
         return filterData(
-            extractedData, 
+            data, 
             startDateInput ? startDateInput.value : '', 
             endDateInput ? endDateInput.value : '', 
-            statusFilterSelect ? statusFilterSelect.value : ''
+            statusFilterSelect ? statusFilterSelect.value : '',
+            doctorFilterSelect ? doctorFilterSelect.value : ''
         );
     }
 
-    function filterData(data, startDate, endDate, status) {
-        console.log('Filtering data:', { data, startDate, endDate, status });
-        if (!data || !Array.isArray(data)) {
-            console.error('Invalid data for filtering:', data);
-            return [];
-        }
+    function filterData(data, startDate, endDate, status, doctor) {
         return data.filter(appointment => {
-            if (startDate && startDate !== '') {
-                const appointmentDate = new Date(appointment.date);
-                if (appointmentDate < new Date(startDate)) return false;
-            }
-            if (endDate && endDate !== '') {
-                const appointmentDate = new Date(appointment.date);
-                if (appointmentDate > new Date(endDate)) return false;
-            }
-            if (status && status !== '') {
-                if (appointment.status !== status) return false;
-            }
+            const appointmentDate = new Date(appointment.Date);
+            if (startDate && startDate !== '' && appointmentDate < new Date(startDate)) return false;
+            if (endDate && endDate !== '' && appointmentDate > new Date(endDate)) return false;
+            if (status && status !== '' && appointment.Status !== status) return false;
+            if (doctor && doctor !== '' && appointment.Doctor !== doctor) return false;
             return true;
         });
     }
 
     function calculateTotalPay(data) {
         return data.reduce((total, appointment) => {
-            const pay = parseFloat(appointment.pay.replace('$', ''));
+            const pay = parseFloat(appointment.Pay.replace('$', ''));
             return total + (isNaN(pay) ? 0 : pay);
         }, 0);
     }
 
-    async function extractScheduleFromMultipleFiles(files, doctorName) {
+    async function extractScheduleFromMultipleFiles(files) {
         let allSchedules = [];
 
         for (let file of files) {
             try {
-                const schedule = await extractSchedule(file, doctorName);
+                const schedule = await extractSchedule(file);
                 allSchedules = allSchedules.concat(schedule);
             } catch (error) {
                 console.error(`Error processing file ${file.name}:`, error);
@@ -217,15 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return allSchedules;
     }
 
-    async function extractSchedule(file, doctorName) {
+    async function extractSchedule(file) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
         const schedule = [];
         let totalText = '';
 
-        //const regexPattern = `(\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{2,4})\\s*[,.]?\\s*(\\d{1,2}:\\d{2})\\s*[,.]?\\s*(${doctorName})\\s*[,.]?\\s*(Patient\\s*\\d+)\\s*[,.]?\\s*([\\w\\s]+)\\s*[,.]?\\s*(\\d+\\s*min)\\s*[,.]?\\s*(\\$\\d+)\\s*[,.]?\\s*(\\w+)`;
-        const regexPattern = /(\d{2}\/\d{2}\/\d{4})\s+(\d{1,2}:\d{2}\s*[APM]{2})\s+(Dr\.\s*[A-Za-z]+)\s+(Patient\s*\d+)\s+([A-Za-z]+)\s+(\d+min)\s+\$?(\d+)\s+(Confirmed|Pending|Cancelled)/;
-        const regex = new RegExp(regexPattern, 'gi');
+        const regexPattern = /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(Dr\.\s+[A-Za-z]+)\s+(Patient\s+\d+)\s+([A-Za-z]+)\s+(\d+\s+min)\s+(\$\d+)\s+(\w+)/g;
 
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
@@ -236,40 +239,23 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Page ${i} content:`, pageText);  // Debugging: Log each page's content
 
             let match;
-            while ((match = regex.exec(pageText)) !== null) {
-                if(match[3]===doctorName){
-                    schedule.push({
-                    date: match[1],
-                    time: match[2],
-                    doctor: match[3],
-                    patient: match[4],
-                    service: match[5].trim(),
-                    duration: match[6],
-                    pay: match[7],
-                    status: match[8]
+            while ((match = regexPattern.exec(pageText)) !== null) {
+                schedule.push({
+                    Date: match[1],
+                    Time: match[2],
+                    Doctor: match[3],
+                    Patient: match[4],
+                    Service: match[5],
+                    Duration: match[6],
+                    Pay: match[7],
+                    Status: match[8]
                 });
                 console.log('Matched:', match[0]);
-                }
-                  // Debugging: Log each matched record
             }
         }
 
         console.log('Total text content:', totalText);  // Debugging: Log all text content
         console.log('Extracted schedule:', schedule);  // Debugging: Log the final extracted schedule
-
-        if (schedule.length === 0) {
-            console.log(`No matches found for doctor: ${doctorName}`);
-            console.log('Regex used:', regexPattern);
-            
-            // Additional debugging: search for the doctor's name in the text
-            const doctorNameIndex = totalText.indexOf(doctorName);
-            if (doctorNameIndex !== -1) {
-                console.log(`Doctor name found at index ${doctorNameIndex}`);
-                console.log('Surrounding text:', totalText.substring(Math.max(0, doctorNameIndex - 50), doctorNameIndex + 50));
-            } else {
-                console.log(`Doctor name "${doctorName}" not found in the text`);
-            }
-        }
 
         return schedule;
     }
@@ -282,14 +268,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const columns = ['Date', 'Time', 'Doctor', 'Patient', 'Service', 'Duration', 'Pay', 'Status'];
         const rows = data.map(appointment => [
-            appointment.date,
-            appointment.time,
-            appointment.doctor,
-            appointment.patient,
-            appointment.service,
-            appointment.duration,
-            appointment.pay,
-            appointment.status
+            appointment.Date,
+            appointment.Time,
+            appointment.Doctor,
+            appointment.Patient,
+            appointment.Service,
+            appointment.Duration,
+            appointment.Pay,
+            appointment.Status
         ]);
 
         doc.autoTable({
@@ -306,5 +292,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return doc;
     }
 
-    // ... (rest of the functions remain the same)
+    function generateMockData(selectedDate) {
+        const mockData = [];
+        const statuses = ['Confirmed', 'Pending', 'Cancelled'];
+        const services = ['Check-up', 'Vaccination', 'Surgery', 'Consultation'];
+        const doctors = ['Dr. Smith', 'Dr. Johnson', 'Dr. Williams', 'Dr. Brown', 'Dr. Jones'];
+
+        for (let i = 0; i < 50; i++) {  // Increased to 50 appointments for more variety
+            mockData.push({
+                Date: selectedDate.toISOString().split('T')[0],
+                Time: `${Math.floor(Math.random() * 12 + 8)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
+                Doctor: doctors[Math.floor(Math.random() * doctors.length)],
+                Patient: `Patient ${i + 1}`,
+                Service: services[Math.floor(Math.random() * services.length)],
+                Duration: `${Math.floor(Math.random() * 30 + 15)} min`,
+                Pay: `$${Math.floor(Math.random() * 200 + 50)}`,
+                Status: statuses[Math.floor(Math.random() * statuses.length)]
+            });
+        }
+
+        console.log('Generated mock data:', mockData);
+        return mockData;
+    }
 });
