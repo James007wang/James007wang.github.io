@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const extractDataBtn = document.getElementById('extractData');
     const downloadPDFBtn = document.getElementById('downloadPDF');
     const resultDiv = document.getElementById('result');
-    const mockDataDateInput = document.getElementById('mockDataDate');
+    const mockDataStartDateInput = document.getElementById('mockDataStartDate');
+    const mockDataEndDateInput = document.getElementById('mockDataEndDate');
     const pdfFileInput = document.getElementById('pdfFile');
     const fileListDiv = document.getElementById('fileList');
 
@@ -24,12 +25,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     generateMockDataBtn.addEventListener('click', () => {
-        const selectedDate = new Date(mockDataDateInput.value);
-        if (isNaN(selectedDate.getTime())) {
-            alert('Please select a valid date');
+        const startDate = new Date(mockDataStartDateInput.value);
+        const endDate = new Date(mockDataEndDateInput.value);
+        
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            alert('Please select valid start and end dates');
             return;
         }
-        mockData = generateMockData(selectedDate);
+        
+        if (startDate > endDate) {
+            alert('Start date must be before end date');
+            return;
+        }
+        
+        mockData = generateMockData(startDate, endDate);
         console.log('Mock data:', mockData);
         displayData(mockData, 'Mock Data Generated:');
         generatePDFBtn.disabled = false;
@@ -103,13 +112,28 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Number of files selected:', selectedFiles.length);
         console.log('Selected files:', selectedFiles);
 
-        let fileListHTML = '<h4>Selected Files:</h4><ul>';
+        let fileListHTML = '<h4>Selected Files:</h4><ul class="file-list">';
         for (let i = 0; i < selectedFiles.length; i++) {
             console.log(`File ${i + 1}:`, selectedFiles[i].name);
-            fileListHTML += `<li>${selectedFiles[i].name}</li>`;
+            fileListHTML += `<li>
+                <span class="file-name">${selectedFiles[i].name}</span>
+                <button class="removeFile" data-index="${i}" title="Remove file">×</button>
+            </li>`;
         }
         fileListHTML += '</ul>';
         fileListDiv.innerHTML = fileListHTML;
+
+        // Add event listeners to remove buttons
+        const removeButtons = document.querySelectorAll('.removeFile');
+        removeButtons.forEach(button => {
+            button.addEventListener('click', removeFile);
+        });
+    }
+
+    function removeFile(event) {
+        const index = parseInt(event.target.getAttribute('data-index'));
+        selectedFiles.splice(index, 1);
+        updateFileList();
     }
 
     function displayData(data, title) {
@@ -292,24 +316,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return doc;
     }
 
-    function generateMockData(selectedDate) {
+    function generateMockData(startDate, endDate) {
         const mockData = [];
         const statuses = ['Confirmed', 'Pending', 'Cancelled'];
         const services = ['Check-up', 'Vaccination', 'Surgery', 'Consultation'];
         const doctors = ['Dr. Smith', 'Dr. Johnson', 'Dr. Williams', 'Dr. Brown', 'Dr. Jones'];
 
-        for (let i = 0; i < 50; i++) {  // Increased to 50 appointments for more variety
-            mockData.push({
-                Date: selectedDate.toISOString().split('T')[0],
-                Time: `${Math.floor(Math.random() * 12 + 8)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
-                Doctor: doctors[Math.floor(Math.random() * doctors.length)],
-                Patient: `Patient ${i + 1}`,
-                Service: services[Math.floor(Math.random() * services.length)],
-                Duration: `${Math.floor(Math.random() * 30 + 15)} min`,
-                Pay: `$${Math.floor(Math.random() * 200 + 50)}`,
-                Status: statuses[Math.floor(Math.random() * statuses.length)]
-            });
-        }
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const dayRange = (end - start) / (1000 * 60 * 60 * 24);
+
+        doctors.forEach(doctor => {
+            for (let i = 0; i < 10; i++) {
+                const appointmentDate = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+                mockData.push({
+                    Date: appointmentDate.toISOString().split('T')[0],
+                    Time: `${String(Math.floor(Math.random() * 12 + 8)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+                    Doctor: doctor,
+                    Patient: `Patient ${i + 1}`,
+                    Service: services[Math.floor(Math.random() * services.length)],
+                    Duration: `${Math.floor(Math.random() * 30 + 15)} min`,
+                    Pay: `$${Math.floor(Math.random() * 200 + 50)}`,
+                    Status: statuses[Math.floor(Math.random() * statuses.length)]
+                });
+            }
+        });
 
         console.log('Generated mock data:', mockData);
         return mockData;
