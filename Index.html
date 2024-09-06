@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinic Schedule Extractor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Clinic Schedule Extractor</h1>
+        
+        <h2>Step 1: Generate Mock Data</h2>
+        <input type="date" id="mockDataDate">
+        <button id="generateMockData">Generate Mock Data</button>
+        
+        <h2>Step 2: Generate PDF from Mock Data</h2>
+        <button id="generatePDF" disabled>Generate and Download PDF</button>
+        
+        <h2>Step 3: Upload PDFs and Extract Data</h2>
+        <form id="uploadForm">
+            <input type="file" id="pdfFile" accept=".pdf" multiple required>
+            <div id="fileList"></div>
+            <input type="text" id="doctorName" placeholder="Doctor's Name" required>
+            
+            <button type="submit" id="extractData">Extract Data</button>
+        </form>
+        
+        <h2>Step 4: Download Filtered as PDF</h2>
+        <button id="downloadPDF" disabled>Download Filtered Data as PDF</button>
+        
+        <div id="result"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
